@@ -1,0 +1,20 @@
+# IDE / Editor
+.vscode/
+.idea/
+*.swp
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
+
+# File người dùng upload (giữ lại thư mục và .gitkeep)
+uploads/avatars/*
+uploads/products/*
+!uploads/avatars/.gitkeep
+!uploads/products/.gitkeep
+
+# Cấu hình local (nếu tách file riêng cho từng máy)
+config/config.local.php
