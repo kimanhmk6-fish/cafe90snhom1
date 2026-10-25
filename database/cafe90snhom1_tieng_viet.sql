@@ -1,9 +1,15 @@
 -- =========================================================
--- GÓC CÀ PHÊ 90S - KHỞI TẠO CƠ SỞ DỮ LIỆU
--- 12 bảng theo ERD; dữ liệu mẫu hiển thị bằng tiếng Việt có dấu
+-- GÓC CÀ PHÊ 90S - KHỞI TẠO CƠ SỞ DỮ LIỆU + DỮ LIỆU MẪU
+-- 12 bảng theo ERD (Cách 2 – có product_sizes)
 -- Database: cafe90snhom1
--- Dữ liệu mẫu sản phẩm (P-01, Kim Anh): 3 danh mục + 21 món theo chuẩn UC
--- đã chốt 25/10/2026 — S = giá gốc, M +5.000đ, L +10.000đ; bánh không size.
+-- =========================================================
+-- Hướng dẫn:
+-- 1. Import file này trên phpMyAdmin / MySQL Workbench / CLI
+-- 2. Tài khoản mẫu (mật khẩu mặc định: password):
+--      khach1@example.com  (customer)
+--      khach2@example.com  (customer)
+--      admin@example.com   (admin)
+-- 3. Nên thay hash mật khẩu bằng password_hash('Cafe90s@123', PASSWORD_DEFAULT)
 -- =========================================================
 
 CREATE DATABASE IF NOT EXISTS cafe90snhom1
@@ -30,6 +36,10 @@ DROP TABLE IF EXISTS users;
 
 SET FOREIGN_KEY_CHECKS = 1;
 
+-- =========================================================
+-- PHẦN 1: TẠO 12 BẢNG
+-- =========================================================
+
 -- 1. USERS: tài khoản đăng nhập
 CREATE TABLE users (
     id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
@@ -42,7 +52,7 @@ CREATE TABLE users (
     updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
--- 2. USER_PROFILES: thông tin chi tiết của tài khoản
+-- 2. USER_PROFILES: thông tin chi tiết của tài khoản (1-1 với users)
 CREATE TABLE user_profiles (
     id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
     user_id INT UNSIGNED NOT NULL UNIQUE,
@@ -58,7 +68,6 @@ CREATE TABLE user_profiles (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- 3. PASSWORD_RESETS: mã/token đặt lại mật khẩu
--- Theo ERD, bảng liên kết bằng email logic, không tạo khóa ngoại.
 CREATE TABLE password_resets (
     id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
     email VARCHAR(150) NOT NULL,
@@ -107,7 +116,9 @@ CREATE TABLE products (
     INDEX idx_products_active (is_active)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
--- 7. PRODUCT_SIZES: giá theo kích cỡ; bánh không cần dòng trong bảng này
+-- 7. PRODUCT_SIZES: giá theo kích cỡ
+--    Chỉ sản phẩm đồ uống (Cà phê, Trà) có dòng trong bảng này.
+--    Bánh không có dòng → không hiện chọn size, dùng base_price.
 CREATE TABLE product_sizes (
     id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
     product_id INT UNSIGNED NOT NULL,
@@ -135,6 +146,7 @@ CREATE TABLE carts (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- 9. CART_ITEMS: sản phẩm trong giỏ hàng
+--    size_id cho phép NULL (dành cho bánh)
 CREATE TABLE cart_items (
     id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
     cart_id INT UNSIGNED NOT NULL,
@@ -182,7 +194,8 @@ CREATE TABLE orders (
     INDEX idx_orders_created_at (created_at)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
--- 11. ORDER_DETAILS: chi tiết đơn hàng, lưu tên/giá tại thời điểm mua
+-- 11. ORDER_DETAILS: chi tiết đơn hàng (snapshot tên/giá tại thời điểm mua)
+--     size_id / size_name cho phép NULL (dành cho bánh)
 CREATE TABLE order_details (
     id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
     order_id INT UNSIGNED NOT NULL,
@@ -209,7 +222,7 @@ CREATE TABLE order_details (
     INDEX idx_order_details_product_id (product_id)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
--- 12. PAYMENTS: mỗi đơn hàng có tối đa một bản ghi thanh toán
+-- 12. PAYMENTS: mỗi đơn hàng có tối đa một bản ghi thanh toán (1-1)
 CREATE TABLE payments (
     id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
     order_id INT UNSIGNED NOT NULL UNIQUE,
@@ -227,115 +240,65 @@ CREATE TABLE payments (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- =========================================================
--- DỮ LIỆU MẪU
+-- PHẦN 2: DỮ LIỆU MẪU – DANH MỤC, SIZE, SẢN PHẨM
 -- =========================================================
 
 INSERT INTO categories (name, slug, description, is_active) VALUES
-('Cà phê', 'ca-phe', 'Cà phê pha phin, pha máy kiểu 90s.', 1),
-('Trà & Đá xay', 'tra-da-xay', 'Trà trái cây, trà sữa, sinh tố & đá xay.', 1),
-('Bánh ngọt & Ăn nhẹ', 'banh-ngot-an-nhe', 'Ăn kèm cho buổi cà phê thêm trọn.', 1);
+('Cà phê', 'ca-phe', 'Các loại cà phê pha chế, phù hợp để thưởng thức mỗi ngày.', 1),
+('Trà', 'tra', 'Các loại trà trái cây thơm ngon và thanh mát.', 1),
+('Bánh', 'banh', 'Các loại bánh ngọt dùng kèm đồ uống.', 1);
 
 INSERT INTO sizes (name, description, sort_order) VALUES
 ('S', 'Nhỏ', 1),
 ('M', 'Vừa', 2),
 ('L', 'Lớn', 3);
 
--- Đồ uống: base_price là giá size S; size M cộng 5.000đ; size L cộng 10.000đ.
--- Bánh có giá cố định (base_price) nên không tạo dòng trong product_sizes.
--- 21 món: 6 cà phê + 10 trà & đá xay + 5 bánh. is_featured = 1 là món nổi bật trang chủ (UC01).
+-- Đồ uống: base_price = giá size S; M = +5.000đ; L = +10.000đ.
+-- Bánh: giá cố định, KHÔNG tạo dòng trong product_sizes.
 INSERT INTO products
 (category_id, name, slug, description, image, base_price, is_featured, is_active)
 SELECT c.id, p.name, p.slug, p.description, p.image, p.base_price, p.is_featured, 1
 FROM (
-    SELECT 'Cà phê đen đá' AS name, 'ca-phe-den-da' AS slug,
-           'Pha phin truyền thống, đậm vị 90s.' AS description,
-           'uploads/product/ca-phe-den-da.jpg' AS image, 22000 AS base_price, 1 AS is_featured,
+    SELECT 'Cà phê sữa đá' AS name, 'ca-phe-sua-da' AS slug,
+           'Cà phê đậm đà kết hợp sữa đặc, dùng cùng đá mát lạnh.' AS description,
+           'uploads/product/ca-phe-sua-da.jpg' AS image, 30000 AS base_price, 1 AS is_featured,
            'ca-phe' AS category_slug
     UNION ALL
-    SELECT 'Cà phê sữa đá', 'ca-phe-sua-da',
-           'Sữa đặc + cà phê phin, quốc dân.',
-           'uploads/product/ca-phe-sua-da.jpg', 25000, 1, 'ca-phe'
-    UNION ALL
     SELECT 'Bạc xỉu', 'bac-xiu',
-           'Nhiều sữa, ít cà phê — cho team sợ đắng.',
-           'uploads/product/bac-xiu.jpg', 27000, 0, 'ca-phe'
+           'Vị sữa béo nhẹ hòa quyện cùng hương cà phê dịu dàng.',
+           'uploads/product/bac-xiu.jpg', 32000, 1, 'ca-phe'
     UNION ALL
-    SELECT 'Cà phê trứng', 'ca-phe-trung',
-           'Lớp kem trứng béo ngậy kiểu Hà Nội xưa.',
-           'uploads/product/ca-phe-trung.jpg', 35000, 1, 'ca-phe'
+    SELECT 'Cà phê đen đá', 'ca-phe-den-da',
+           'Cà phê đen đậm vị, dành cho người yêu thích hương vị nguyên bản.',
+           'uploads/product/ca-phe-den-da.jpg', 25000, 0, 'ca-phe'
     UNION ALL
-    SELECT 'Cold brew cam sả', 'cold-brew-cam-sa',
-           'Ủ lạnh 18h, thơm cam sả tươi.',
-           'uploads/product/cold-brew-cam-sa.jpg', 38000, 0, 'ca-phe'
+    SELECT 'Latte', 'latte',
+           'Espresso kết hợp sữa tươi đánh bọt mềm mịn.',
+           'uploads/product/latte.jpg', 40000, 0, 'ca-phe'
     UNION ALL
-    SELECT 'Cà phê cốt dừa', 'ca-phe-cot-dua',
-           'Cà phê + cốt dừa xay đá mát lạnh.',
-           'uploads/product/ca-phe-cot-dua.jpg', 35000, 0, 'ca-phe'
-    UNION ALL
-    SELECT 'Trà đào cam sả', 'tra-dao-cam-sa',
-           'Best-seller: đào giòn, cam sả thơm.',
-           'uploads/product/tra-dao-cam-sa.jpg', 32000, 1, 'tra-da-xay'
+    SELECT 'Trà đào', 'tra-dao',
+           'Trà đào thanh mát với hương đào thơm dịu.',
+           'uploads/product/tra-dao.jpg', 35000, 1, 'tra'
     UNION ALL
     SELECT 'Trà vải', 'tra-vai',
-           'Vải thiều ngọt thanh.',
-           'uploads/product/tra-vai.jpg', 30000, 0, 'tra-da-xay'
+           'Trà vải thơm ngọt, ngon hơn khi dùng lạnh.',
+           'uploads/product/tra-vai.jpg', 35000, 0, 'tra'
     UNION ALL
-    SELECT 'Trà sữa trân châu đường đen', 'tra-sua-tran-chau-duong-den',
-           'Trân châu dẻo nấu mỗi ngày.',
-           'uploads/product/tra-sua-tran-chau-duong-den.jpg', 32000, 1, 'tra-da-xay'
+    SELECT 'Trà chanh mật ong', 'tra-chanh-mat-ong',
+           'Trà chanh chua dịu kết hợp vị ngọt tự nhiên của mật ong.',
+           'uploads/product/tra-chanh-mat-ong.jpg', 30000, 0, 'tra'
     UNION ALL
-    SELECT 'Hồng trà sữa', 'hong-tra-sua',
-           'Vị trà đậm, ít ngọt.',
-           'uploads/product/hong-tra-sua.jpg', 28000, 0, 'tra-da-xay'
+    SELECT 'Bánh sừng bò bơ', 'banh-sung-bo-bo',
+           'Bánh sừng bò nhiều lớp, thơm mùi bơ.',
+           'uploads/product/banh-sung-bo-bo.jpg', 25000, 0, 'banh'
     UNION ALL
-    SELECT 'Trà chanh giã tay', 'tra-chanh-gia-tay',
-           'Chanh giã tay thơm the.',
-           'uploads/product/tra-chanh-gia-tay.jpg', 25000, 0, 'tra-da-xay'
-    UNION ALL
-    SELECT 'Trà atiso', 'tra-atiso',
-           'Thanh nhiệt, không caffeine.',
-           'uploads/product/tra-atiso.jpg', 22000, 0, 'tra-da-xay'
-    UNION ALL
-    SELECT 'Nước cam ép', 'nuoc-cam-ep',
-           'Cam sành ép nguyên chất.',
-           'uploads/product/nuoc-cam-ep.jpg', 30000, 0, 'tra-da-xay'
-    UNION ALL
-    SELECT 'Sinh tố bơ', 'sinh-to-bo',
-           'Bơ sáp dẻo + sữa đặc.',
-           'uploads/product/sinh-to-bo.jpg', 35000, 0, 'tra-da-xay'
-    UNION ALL
-    SELECT 'Nước ép dưa hấu', 'nuoc-ep-dua-hau',
-           'Giải khát mùa nóng.',
-           'uploads/product/nuoc-ep-dua-hau.jpg', 25000, 0, 'tra-da-xay'
-    UNION ALL
-    SELECT 'Chanh dây đá xay', 'chanh-day-da-xay',
-           'Chua ngọt sảng khoái.',
-           'uploads/product/chanh-day-da-xay.jpg', 32000, 0, 'tra-da-xay'
-    UNION ALL
-    SELECT 'Bánh mì pate', 'banh-mi-pate',
-           'Pate gan béo, bánh mì giòn.',
-           'uploads/product/banh-mi-pate.jpg', 25000, 0, 'banh-ngot-an-nhe'
-    UNION ALL
-    SELECT 'Croissant trứng muối', 'croissant-trung-muoi',
-           'Ngàn lớp bơ + nhân trứng muối chảy.',
-           'uploads/product/croissant-trung-muoi.jpg', 35000, 1, 'banh-ngot-an-nhe'
-    UNION ALL
-    SELECT 'Bánh flan', 'banh-flan',
-           'Caramel đắng nhẹ kiểu cũ.',
-           'uploads/product/banh-flan.jpg', 18000, 0, 'banh-ngot-an-nhe'
-    UNION ALL
-    SELECT 'Bông lan trứng muối', 'bong-lan-trung-muoi',
-           'Sốt phô mai + chà bông.',
-           'uploads/product/bong-lan-trung-muoi.jpg', 45000, 0, 'banh-ngot-an-nhe'
-    UNION ALL
-    SELECT 'Khoai tây chiên', 'khoai-tay-chien',
-           'Giòn rụm, chấm tương ớt/mayo.',
-           'uploads/product/khoai-tay-chien.jpg', 35000, 0, 'banh-ngot-an-nhe'
+    SELECT 'Bánh Tiramisu', 'banh-tiramisu',
+           'Bánh Tiramisu mềm mịn với hương cà phê và cacao.',
+           'uploads/product/banh-tiramisu.jpg', 35000, 1, 'banh'
 ) AS p
 JOIN categories c ON c.slug = p.category_slug;
 
--- Tạo giá theo kích cỡ cho đồ uống (danh mục Cà phê và Trà & Đá xay): 16 món x 3 size = 48 dòng.
--- Bánh ngọt & Ăn nhẹ không có dòng trong bảng này (giá cố định ở products.base_price).
+-- Tạo giá theo kích cỡ CHỈ cho sản phẩm thuộc danh mục Cà phê và Trà.
 INSERT INTO product_sizes (product_id, size_id, price)
 SELECT p.id, s.id,
        p.base_price + CASE s.name
@@ -346,13 +309,129 @@ SELECT p.id, s.id,
 FROM products p
 JOIN categories c ON c.id = p.category_id
 JOIN sizes s
-WHERE c.slug IN ('ca-phe', 'tra-da-xay');
+WHERE c.slug IN ('ca-phe', 'tra');
 
--- Không tạo tài khoản, giỏ hàng, đơn hàng và thanh toán giả.
--- Các bảng này sẽ có dữ liệu khi người dùng thực hiện chức năng trên website.
+-- =========================================================
+-- PHẦN 3: DỮ LIỆU MẪU – TÀI KHOẢN, GIỎ HÀNG, ĐƠN HÀNG
+-- =========================================================
+-- Mật khẩu mặc định của các tài khoản mẫu: password
+-- Hash: $2y$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2uheWG/igi
+-- (hash mẫu Laravel/PHP, tương ứng chuỗi "password")
+-- Nên thay bằng hash thực tế tạo từ password_hash('Cafe90s@123', PASSWORD_DEFAULT)
 
--- Kiểm tra số lượng dữ liệu mẫu sau khi import:
-SELECT 'Danh mục' AS bang_du_lieu, COUNT(*) AS so_ban_ghi FROM categories
-UNION ALL SELECT 'Kích cỡ', COUNT(*) FROM sizes
-UNION ALL SELECT 'Sản phẩm', COUNT(*) FROM products
-UNION ALL SELECT 'Giá theo kích cỡ', COUNT(*) FROM product_sizes;
+START TRANSACTION;
+
+-- 3.1. Tài khoản: 2 khách + 1 admin
+INSERT INTO users (email, password, role, is_active, remember_token)
+VALUES
+('khach1@example.com', '$2y$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2uheWG/igi', 'customer', 1, NULL),
+('khach2@example.com', '$2y$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2uheWG/igi', 'customer', 1, NULL),
+('admin@example.com',  '$2y$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2uheWG/igi',  'admin',    1, NULL);
+
+SET @user1_id = (SELECT id FROM users WHERE email = 'khach1@example.com' LIMIT 1);
+SET @user2_id = (SELECT id FROM users WHERE email = 'khach2@example.com' LIMIT 1);
+SET @admin_id = (SELECT id FROM users WHERE email = 'admin@example.com' LIMIT 1);
+
+INSERT INTO user_profiles (user_id, full_name, phone, address, avatar)
+VALUES
+(@user1_id, 'Nguyễn Minh Anh', '0901000001', 'Cầu Giấy, Hà Nội', NULL),
+(@user2_id, 'Trần Hoàng Nam', '0901000002', 'Đống Đa, Hà Nội', NULL),
+(@admin_id, 'Quản trị viên', '0901000003', 'Hà Nội', NULL);
+
+-- 3.2. Lấy ID sản phẩm / size theo slug (không hard-code ID)
+SET @product_coffee    = (SELECT id FROM products WHERE slug = 'ca-phe-sua-da' LIMIT 1);
+SET @product_tea       = (SELECT id FROM products WHERE slug = 'tra-dao' LIMIT 1);
+SET @product_cake      = (SELECT id FROM products WHERE slug = 'banh-tiramisu' LIMIT 1);
+SET @product_croissant = (SELECT id FROM products WHERE slug = 'banh-sung-bo-bo' LIMIT 1);
+SET @size_s = (SELECT id FROM sizes WHERE name = 'S' LIMIT 1);
+SET @size_m = (SELECT id FROM sizes WHERE name = 'M' LIMIT 1);
+SET @size_l = (SELECT id FROM sizes WHERE name = 'L' LIMIT 1);
+
+-- 3.3. Giỏ hàng mẫu cho 2 khách
+INSERT INTO carts (user_id) VALUES (@user1_id), (@user2_id);
+SET @cart1_id = (SELECT id FROM carts WHERE user_id = @user1_id LIMIT 1);
+SET @cart2_id = (SELECT id FROM carts WHERE user_id = @user2_id LIMIT 1);
+
+INSERT INTO cart_items (cart_id, product_id, size_id, quantity)
+VALUES
+(@cart1_id, @product_coffee, @size_m, 2),   -- Cà phê sữa đá size M x2
+(@cart1_id, @product_cake,   NULL,    1),   -- Bánh Tiramisu (không size)
+(@cart2_id, @product_tea,    @size_l, 1);   -- Trà đào size L x1
+
+-- 3.4. Đơn hàng mẫu (5 đơn với các trạng thái khác nhau)
+INSERT INTO orders
+(user_id, order_code, customer_name, customer_phone, shipping_address, note,
+ subtotal, shipping_fee, total_amount, status)
+VALUES
+(@user1_id, 'DH-MAU-001', 'Nguyễn Minh Anh', '0901000001', 'Cầu Giấy, Hà Nội',
+ 'Đơn chờ xác nhận - dữ liệu mẫu', 70000, 15000, 85000, 'pending'),
+(@user1_id, 'DH-MAU-002', 'Nguyễn Minh Anh', '0901000001', 'Cầu Giấy, Hà Nội',
+ 'Đơn đã xác nhận - dữ liệu mẫu', 80000, 15000, 95000, 'confirmed'),
+(@user1_id, 'DH-MAU-003', 'Nguyễn Minh Anh', '0901000001', 'Cầu Giấy, Hà Nội',
+ 'Đơn hoàn thành - dữ liệu mẫu', 30000, 15000, 45000, 'completed'),
+(@user2_id, 'DH-MAU-004', 'Trần Hoàng Nam', '0901000002', 'Đống Đa, Hà Nội',
+ 'Đơn đang chuẩn bị - dữ liệu mẫu', 40000, 15000, 55000, 'preparing'),
+(@user2_id, 'DH-MAU-005', 'Trần Hoàng Nam', '0901000002', 'Đống Đa, Hà Nội',
+ 'Đơn đã hủy - dữ liệu mẫu', 25000, 15000, 40000, 'cancelled');
+
+SET @order1_id = (SELECT id FROM orders WHERE order_code = 'DH-MAU-001' LIMIT 1);
+SET @order2_id = (SELECT id FROM orders WHERE order_code = 'DH-MAU-002' LIMIT 1);
+SET @order3_id = (SELECT id FROM orders WHERE order_code = 'DH-MAU-003' LIMIT 1);
+SET @order4_id = (SELECT id FROM orders WHERE order_code = 'DH-MAU-004' LIMIT 1);
+SET @order5_id = (SELECT id FROM orders WHERE order_code = 'DH-MAU-005' LIMIT 1);
+
+INSERT INTO order_details
+(order_id, product_id, size_id, product_name, size_name, price, quantity, total)
+VALUES
+(@order1_id, @product_coffee,    @size_m, 'Cà phê sữa đá', 'M', 35000, 2, 70000),
+(@order2_id, @product_tea,       @size_l, 'Trà đào',       'L', 45000, 1, 45000),
+(@order2_id, @product_cake,      NULL,    'Bánh Tiramisu', NULL, 35000, 1, 35000),
+(@order3_id, @product_coffee,    @size_s, 'Cà phê sữa đá', 'S', 30000, 1, 30000),
+(@order4_id, @product_tea,       @size_m, 'Trà đào',       'M', 40000, 1, 40000),
+(@order5_id, @product_croissant, NULL,    'Bánh sừng bò bơ', NULL, 25000, 1, 25000);
+
+INSERT INTO payments (order_id, payment_method, amount, status, transaction_code, paid_at)
+VALUES
+(@order1_id, 'bank_transfer', 85000,  'pending', NULL,          NULL),
+(@order2_id, 'bank_transfer', 95000,  'paid',    'DEMO-TXN-002', NOW()),
+(@order3_id, 'bank_transfer', 45000,  'paid',    'DEMO-TXN-003', NOW()),
+(@order4_id, 'bank_transfer', 55000,  'paid',    'DEMO-TXN-004', NOW()),
+(@order5_id, 'bank_transfer', 40000,  'failed',  'DEMO-TXN-005', NULL);
+
+COMMIT;
+
+-- =========================================================
+-- PHẦN 4: KIỂM TRA SAU KHI IMPORT
+-- =========================================================
+
+SELECT 'Danh mục'          AS bang_du_lieu, COUNT(*) AS so_ban_ghi FROM categories
+UNION ALL SELECT 'Kích cỡ',                 COUNT(*) FROM sizes
+UNION ALL SELECT 'Sản phẩm',                COUNT(*) FROM products
+UNION ALL SELECT 'Giá theo kích cỡ',        COUNT(*) FROM product_sizes
+UNION ALL SELECT 'Tài khoản',               COUNT(*) FROM users
+UNION ALL SELECT 'Hồ sơ',                   COUNT(*) FROM user_profiles
+UNION ALL SELECT 'Giỏ hàng',                COUNT(*) FROM carts
+UNION ALL SELECT 'Dòng giỏ hàng',           COUNT(*) FROM cart_items
+UNION ALL SELECT 'Đơn hàng',                COUNT(*) FROM orders
+UNION ALL SELECT 'Chi tiết đơn',            COUNT(*) FROM order_details
+UNION ALL SELECT 'Thanh toán',              COUNT(*) FROM payments;
+
+SELECT id, email, role FROM users
+WHERE email IN ('khach1@example.com', 'khach2@example.com', 'admin@example.com');
+
+SELECT order_code, customer_name, subtotal, shipping_fee, total_amount, status
+FROM orders
+WHERE order_code LIKE 'DH-MAU-%'
+ORDER BY order_code;
+
+-- =========================================================
+-- GHI CHÚ MẬT KHẨU
+-- =========================================================
+-- Hash hiện tại tương ứng chuỗi "password".
+-- Để dùng mật khẩu riêng (ví dụ Cafe90s@123):
+--   1) Tạo file temp_hash.php:
+--        <?php echo password_hash('Cafe90s@123', PASSWORD_DEFAULT), PHP_EOL;
+--   2) Chạy: php temp_hash.php
+--   3) Copy hash và UPDATE users SET password = '...' WHERE email = '...';
+--   4) Xóa temp_hash.php
+-- =========================================================
